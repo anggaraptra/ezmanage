@@ -8,6 +8,7 @@ function openModal(type, data = null) {
   document.getElementById('todo-title').value = '';
   document.getElementById('todo-desc').value = '';
   document.getElementById('todo-due').value = '';
+  document.getElementById('todo-priority').value = ''; // Reset priority
   document.getElementById('modal-submit').innerText = 'Simpan';
   document.getElementById('modal-title').innerText = 'Tambah Todo';
 
@@ -17,6 +18,7 @@ function openModal(type, data = null) {
     document.getElementById('todo-title').value = data.title;
     document.getElementById('todo-desc').value = data.description;
     document.getElementById('todo-due').value = data.due_date;
+    document.getElementById('todo-priority').value = data.priority || ''; // Set priority
     document.getElementById('status-group').style.display = 'block';
     document.getElementById('todo-status').value = data.status;
     document.getElementById('modal-submit').innerText = 'Update';
