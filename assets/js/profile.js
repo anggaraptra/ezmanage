@@ -16,3 +16,15 @@ document.getElementById('profilePicInput').addEventListener('change', function (
     document.getElementById('profileImage').src = URL.createObjectURL(file);
   }
 });
+
+// Function to handle profile image preview
+function previewProfileImage(event) {
+  const input = event.target;
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      document.getElementById('profileImage').src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
