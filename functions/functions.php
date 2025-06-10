@@ -64,18 +64,33 @@ function getFlash($key)
                 $alertClass = 'bg-red-100 border border-red-400 text-red-700';
                 break;
         }
-        return "<div class=\"$alertClass px-4 py-3 rounded\">" . htmlspecialchars($flash['message']) . "</div>";
+        // Tambahkan button close
+        $closeBtn = '<button type="button" onclick="this.parentElement.remove()" class="ml-4 text-xl font-bold focus:outline-none">&times;</button>';
+        return "<div class=\"$alertClass px-4 py-3 rounded flex items-center justify-between\">" .
+            "<span>" . htmlspecialchars($flash['message']) . "</span>" . $closeBtn .
+            "</div>";
     }
     return '';
 }
 
+// Cek apakah user sudah login
 function cek_session()
 {
-    if (!isset($_SESSION['user'])) {
+    if (!isset($_SESSION['login'])) {
         setFlash('auth', 'Silakan login terlebih dahulu!', 'info');
         header("Location: login_page.php");
         exit();
     }
+}
+
+// get just one data users by id
+function get_user_by_id($id)
+{
+    global $mysqli;
+    $id = intval($id);
+    $sql = "SELECT * FROM users WHERE id = $id";
+    $result = dbquery($sql);
+    return mysqli_fetch_assoc($result);
 }
 
 // Fungsi untuk menambah todo 
