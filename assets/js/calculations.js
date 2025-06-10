@@ -43,10 +43,10 @@ function exportHistoryPDF() {
   if (!table) return;
   // Clone table for print
   let printWindow = window.open('', '', 'width=800,height=600');
-  printWindow.document.write('<html><head><title>Riwayat Kalkulasi Anda</title>');
+  printWindow.document.write('<html><head><title>Riwayat Kalkulasi</title>');
   printWindow.document.write('<style>body{font-family:sans-serif;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:6px;}th{background:#f0f0f0;}</style>');
   printWindow.document.write('</head><body>');
-  printWindow.document.write('<h2>Riwayat Kalkulasi Anda</h2>');
+  printWindow.document.write('<h2>Riwayat Kalkulasi</h2>');
   printWindow.document.write(table.outerHTML);
   printWindow.document.write('</body></html>');
   printWindow.document.close();
@@ -56,6 +56,18 @@ function exportHistoryPDF() {
   printWindow.onafterprint = function () {
     printWindow.close();
   };
+}
+
+// Tampilkan hasil kalkulasi dari riwayat
+function showHistoryCalc(expr, result) {
+  // Set input value
+  document.getElementById('expression').value = expr;
+  // Show result
+  document.getElementById('calc-result-value').textContent = result;
+  document.getElementById('calc-result').style.display = '';
+  // Hide error if any
+  var err = document.getElementById('calc-error');
+  if (err) err.style.display = 'none';
 }
 
 // Insert operator/function to input
@@ -96,11 +108,11 @@ function evalMathExpression(expr) {
   expr = expr.replace(/,/g, '.');
   // Only allow safe characters, including ^ and %
   if (/[^0-9+\-*/().\s^%a-zA-Z]/.test(expr)) {
-    throw new Error('Expression contains invalid characters.');
+    throw new Error('Ekspresi mengandung karakter tidak valid.');
   }
   // Prevent empty expression
   if (!expr.trim()) {
-    throw new Error('Expression is empty.');
+    throw new Error('Ekspresi kosong.');
   }
   // Replace ^ with Math.pow for all cases (including variables/expressions)
   expr = expr.replace(/([a-zA-Z0-9_.()]+)\s*\^\s*([a-zA-Z0-9_.()]+)/g, 'Math.pow($1,$2)');
@@ -109,7 +121,7 @@ function evalMathExpression(expr) {
   // Evaluate
   let res = Function('"use strict";return (' + expr + ')')();
   if (typeof res !== 'number' || isNaN(res) || !isFinite(res)) {
-    throw new Error('Expression is not valid.');
+    throw new Error('Ekspresi tidak valid.');
   }
   return res;
 }
