@@ -108,6 +108,14 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                                 </svg>
                                 <input type="file" id="profilePicInput" name="profile_pic" class="hidden" accept="image/*">
                             </label>
+                            <!-- Hapus Foto Profile Button -->
+                            <?php if (!empty($user['profile_pic']) && file_exists('assets/profiles/' . $user['profile_pic'])): ?>
+                                <button type="button" onclick="openDeletePhotoModal()" class="absolute bottom-0 right-0 bg-red-600 hover:bg-red-700 text-white rounded-full p-2 shadow-lg transition" title="Hapus Foto Profile">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            <?php endif; ?>
                         </div>
                         <!-- flash message -->
                         <?php if ($flash = getFlash('edit_profile')): ?>
@@ -157,6 +165,33 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                         </div>
                     </form>
                 </div>
+
+                <!-- Modal Konfirmasi Hapus Foto Profil -->
+                <div id="deletePhotoModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+                    <div class="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-md w-full p-6">
+                        <h2 class="text-xl font-bold text-red-600 mb-2 dark:text-red-400">Konfirmasi Hapus Foto Profil</h2>
+                        <p class="mb-4 text-gray-700 dark:text-gray-200">
+                            Anda yakin ingin menghapus foto profil Anda?<br>
+                            <span class="font-semibold text-red-500">Aksi ini tidak dapat dibatalkan.</span>
+                        </p>
+                        <div class="flex justify-end gap-2 mt-4">
+                            <button type="button" onclick="closeDeletePhotoModal()" class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Batal</button>
+                            <form method="post" action="functions/delete_profile_pic.php" class="inline">
+                                <input type="hidden" name="user_id" value="<?= htmlspecialchars($user_login['id']) ?>">
+                                <button type="submit" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold">Hapus Foto</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    function openDeletePhotoModal() {
+                        document.getElementById('deletePhotoModal').classList.remove('hidden');
+                    }
+
+                    function closeDeletePhotoModal() {
+                        document.getElementById('deletePhotoModal').classList.add('hidden');
+                    }
+                </script>
 
                 <!-- Modal Konfirmasi Hapus Akun -->
                 <div id="deleteAccountModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
