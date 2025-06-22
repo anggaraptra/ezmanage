@@ -58,9 +58,9 @@ for ($i = 7; $i >= 0; $i--) {
     $expense_chart_data[] = $sum; // Simpan total pengeluaran bulan ini ke array data chart
 }
 
-// Ambil data user dari database
+// Ambil data user 
 $user = get_user_by_id($user_login['id']);
-// Cek apakah user sudah upload foto profile
+// Cek apakah user sudah upload foto profile, jika belum gunakan avatar default
 $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $user['profile_pic'])
     ? 'assets/profiles/' . $user['profile_pic']
     : 'https://ui-avatars.com/api/?name=' . urlencode($user['fullname']) . '&background=4f8ef7&color=fff';
@@ -69,13 +69,15 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
 <html lang="en">
 
 <head>
-    <!-- Bagian head: meta, favicon, judul, Tailwind, dsb -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicon SVG -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='blue' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M9 17v-2a4 4 0 014-4h3m4 0a9 9 0 11-18 0 9 9 0 0118 0z'/%3E%3C/svg%3E">
     <title>EzManage - Dashboard</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        // Konfigurasi Tailwind untuk dark mode
         tailwind.config = {
             darkMode: 'class',
         }
@@ -93,23 +95,20 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                 </svg>
                 <span class="hidden md:inline text-2xl font-bold tracking-wide text-blue-700 dark:text-blue-200">EzManage</span>
             </div>
-            <!-- Menu Navigasi -->
+            <!-- Menu Navigasi Sidebar -->
             <nav class="flex flex-col gap-2 mt-4">
-                <!-- Menu Dashboard -->
                 <a href="index.php" class="flex items-center gap-2 px-3 py-2 rounded-lg text-blue-700 bg-blue-100 font-medium hover:bg-blue-200  dark:text-blue-200 dark:bg-blue-900/40 dark:hover:bg-blue-900/60">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18" />
                     </svg>
                     <span class="hidden md:inline">Dashboard</span>
                 </a>
-                <!-- Menu Todo List -->
                 <a href="todo.php" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-700  dark:text-gray-300 dark:hover:bg-blue-900/40 dark:hover:text-blue-200">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                     <span class="hidden md:inline">Todo List</span>
                 </a>
-                <!-- Menu Pengeluaran -->
                 <a href="expenses.php" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-700  dark:text-gray-300 dark:hover:bg-blue-900/40 dark:hover:text-blue-200">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 8c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z" />
@@ -117,7 +116,6 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                     </svg>
                     <span class="hidden md:inline">Pengeluaran</span>
                 </a>
-                <!-- Menu Kalkulator -->
                 <a href="calculations.php" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-700  dark:text-gray-300 dark:hover:bg-blue-900/40 dark:hover:text-blue-200">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16 2v2M8 2v2M3 6h18M4 10h16M4 14h16M4 18h16" />
@@ -127,13 +125,12 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                 </a>
             </nav>
         </aside>
-        <!-- Main Content -->
         <div class="flex-1 flex flex-col md:ml-60 ml-20">
             <!-- Navbar Atas -->
             <header class="bg-white/80 backdrop-blur shadow-sm flex items-center justify-between px-4 md:px-10 py-4 sticky top-0 z-20 dark:bg-gray-900/80 dark:shadow-gray-900/30">
                 <h1 class="text-xl md:text-2xl font-bold text-blue-700 dark:text-blue-200">Dashboard</h1>
                 <div class="flex items-center gap-4">
-                    <!-- Tombol Dark Mode -->
+                    <!-- Tombol Toggle Dark Mode -->
                     <button id="darkModeToggle" class="p-2 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-gray-800 dark:text-blue-200 dark:hover:bg-gray-700 " title="Toggle dark mode">
                         <svg id="darkModeIcon" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path id="sunIcon" class="block dark:hidden" stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.343 17.657l-1.414 1.414M17.657 17.657l-1.414-1.414M6.343 6.343L4.929 4.929M12 7a5 5 0 100 10 5 5 0 000-10z" />
@@ -149,6 +146,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
+                        <!-- Menu Dropdown Profil -->
                         <div id="profileDropdownMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 z-40 hidden">
                             <a href="profile.php" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800">
                                 <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -384,7 +382,6 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
             }
         });
     </script>
-    <!-- Script custom untuk dashboard -->
     <script src="assets/js/script.js"></script>
     <script src="assets/js/dashboard.js"></script>
 </body>

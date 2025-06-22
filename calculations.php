@@ -140,7 +140,7 @@ if ($q) {
 
 // Ambil data user
 $user = get_user_by_id($user_login['id']);
-// Cek apakah user sudah upload foto profile
+// Cek apakah user sudah upload foto profile, jika belum gunakan avatar default
 $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $user['profile_pic'])
     ? 'assets/profiles/' . $user['profile_pic']
     : 'https://ui-avatars.com/api/?name=' . urlencode($user['fullname']) . '&background=4f8ef7&color=fff';
@@ -151,10 +151,13 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Favicon SVG -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='blue' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M9 17v-2a4 4 0 014-4h3m4 0a9 9 0 11-18 0 9 9 0 0118 0z'/%3E%3C/svg%3E">
     <title>EzManage - Kalkulator</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        // Konfigurasi Tailwind untuk dark mode
         tailwind.config = {
             darkMode: 'class',
         }
@@ -165,6 +168,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
     <div class="flex min-h-screen">
         <!-- Sidebar Navigasi -->
         <aside class="w-20 md:w-60 bg-white border-r border-blue-100 flex flex-col py-6 px-2 md:px-6 shadow-lg fixed inset-y-0 left-0 z-30 dark:bg-gray-900 dark:border-gray-800">
+            <!-- Logo dan Judul Sidebar -->
             <div class="mb-10 flex items-center justify-center md:justify-start gap-3">
                 <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h3m4 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -172,7 +176,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                 <span class="hidden md:inline text-2xl font-bold tracking-wide text-blue-700 dark:text-blue-200">EzManage</span>
             </div>
             <nav class="flex flex-col gap-2 mt-4">
-                <!-- Link Navigasi -->
+                <!-- Menu Navigasi Sidebar -->
                 <a href="index.php" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-700 dark:text-gray-300 dark:hover:bg-blue-900/40 dark:hover:text-blue-200">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18" />
@@ -201,13 +205,12 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                 </a>
             </nav>
         </aside>
-        <!-- Main Content -->
         <div class="flex-1 flex flex-col md:ml-60 ml-20">
             <!-- Navbar Atas -->
             <header class="bg-white/80 backdrop-blur shadow-sm flex items-center justify-between px-4 md:px-10 py-4 sticky top-0 z-20 dark:bg-gray-900/80 dark:shadow-gray-900/30">
                 <h1 class="text-xl md:text-2xl font-bold text-blue-700 dark:text-blue-200">Kalkulator</h1>
                 <div class="flex items-center gap-4">
-                    <!-- Tombol Dark Mode -->
+                    <!-- Tombol Toggle Dark Mode -->
                     <button id="darkModeToggle" class="p-2 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-gray-800 dark:text-blue-200 dark:hover:bg-gray-700" title="Toggle dark mode">
                         <svg id="darkModeIcon" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path id="sunIcon" class="block dark:hidden" stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.343 17.657l-1.414 1.414M17.657 17.657l-1.414-1.414M6.343 6.343L4.929 4.929M12 7a5 5 0 100 10 5 5 0 000-10z" />
@@ -223,6 +226,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
+                        <!-- Menu Dropdown Profil -->
                         <div id="profileDropdownMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 z-40 hidden">
                             <a href="profile.php" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800">
                                 <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -241,7 +245,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                     </div>
                 </div>
             </header>
-            <!-- Main Content: Section Utama -->
+            <!-- Main Content -->
             <main class="flex-1 p-4 md:p-10">
                 <!-- Notifikasi Flash (Toast) -->
                 <?php if ($flash = getFlash("calculate")): ?>
@@ -599,7 +603,6 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
             </div>
         </div>
     </div>
-    <!-- Script JS: Fungsi Kalkulator, Riwayat, dll -->
     <script src="assets/js/script.js"></script>
     <script src="assets/js/calculations.js"></script>
     <script>

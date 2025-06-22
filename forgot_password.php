@@ -13,10 +13,13 @@ if (isset($_SESSION['login'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicon SVG -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='blue' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M9 17v-2a4 4 0 014-4h3m4 0a9 9 0 11-18 0 9 9 0 0118 0z'/%3E%3C/svg%3E">
     <title>EzManage - Lupa Password</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        // Konfigurasi Tailwind untuk dark mode
         tailwind.config = {
             darkMode: 'class',
         }
@@ -36,8 +39,10 @@ if (isset($_SESSION['login'])) {
             <p class="text-gray-500 dark:text-gray-400">Masukkan username dan email Anda untuk mengatur ulang password</p>
         </header>
         <form action="functions/forgot_password_process.php" method="post" id="form-forgot-password" class="space-y-5">
-            <?php if ($msg = getFlash("forgot")): ?>
-                <?= $msg ?>
+            <?php if ($flash = getFlash("forgot")): ?>
+                <div id="flash">
+                    <?= $flash ?>
+                </div>
             <?php endif; ?>
             <div class="space-y-4">
                 <div>
@@ -77,13 +82,19 @@ if (isset($_SESSION['login'])) {
         </form>
     </main>
     <script>
-        // Dark mode toggle logic
+        // Logika toggle dark mode berdasarkan localStorage atau preferensi sistem
         const html = document.documentElement;
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             html.classList.add('dark');
         } else {
             html.classList.remove('dark');
         }
+
+        // Flash message auto-hide
+        setTimeout(function() {
+            let flash = document.getElementById('flash');
+            if (flash) flash.style.display = 'none';
+        }, 3500);
     </script>
 </body>
 

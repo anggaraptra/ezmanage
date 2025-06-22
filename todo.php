@@ -5,20 +5,20 @@ cek_session();
 // Ambil data user dari session
 $user_login = $_SESSION['user'];
 
-// Ambil data todo dari database
+// Ambil data todo dari database milik user yang login
 $todos = [];
 $result = dbquery("SELECT * FROM todos WHERE user_id = " . intval($user_login['id']));
 while ($row = mysqli_fetch_assoc($result)) {
     $todos[] = $row;
 }
 
-// Ambil filter dari request
+// Ambil filter dari request (status, due_date, priority, search)
 $status_filter = $_GET['status'] ?? '';
 $due_filter = $_GET['due_date'] ?? '';
 $priority_filter = $_GET['priority'] ?? '';
 $search = $_GET['search'] ?? '';
 
-// Filter data
+// Filter data todo sesuai filter yang dipilih user
 $filtered_todos = array_filter($todos, function ($todo) use ($status_filter, $due_filter, $priority_filter, $search) {
     $status_ok = !$status_filter || $todo['status'] === $status_filter;
     $due_ok = !$due_filter || $todo['due_date'] === $due_filter;
@@ -27,9 +27,9 @@ $filtered_todos = array_filter($todos, function ($todo) use ($status_filter, $du
     return $status_ok && $due_ok && $priority_ok && $search_ok;
 });
 
-// Ambil data user
+// Ambil data user 
 $user = get_user_by_id($user_login['id']);
-// Cek apakah user sudah upload foto profile
+// Cek apakah user sudah upload foto profile, jika belum gunakan avatar default
 $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $user['profile_pic'])
     ? 'assets/profiles/' . $user['profile_pic']
     : 'https://ui-avatars.com/api/?name=' . urlencode($user['fullname']) . '&background=4f8ef7&color=fff';
@@ -40,10 +40,13 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Favicon SVG -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='blue' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M9 17v-2a4 4 0 014-4h3m4 0a9 9 0 11-18 0 9 9 0 0118 0z'/%3E%3C/svg%3E">
     <title>EzManage - Todo List</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        // Konfigurasi Tailwind untuk dark mode
         tailwind.config = {
             darkMode: 'class',
         }
@@ -52,14 +55,16 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
 
 <body class="bg-gradient-to-br from-blue-50 to-white min-h-screen font-sans dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-800">
     <div class="flex min-h-screen">
-        <!-- Sidebar -->
+        <!-- Sidebar Navigasi -->
         <aside class="w-20 md:w-60 bg-white border-r border-blue-100 flex flex-col py-6 px-2 md:px-6 shadow-lg fixed inset-y-0 left-0 z-30 dark:bg-gray-900 dark:border-gray-800">
+            <!-- Logo dan Judul Sidebar -->
             <div class="mb-10 flex items-center justify-center md:justify-start gap-3">
                 <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2a4 4 0 014-4h3m4 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span class="hidden md:inline text-2xl font-bold tracking-wide text-blue-700 dark:text-blue-200">EzManage</span>
             </div>
+            <!-- Menu Navigasi Sidebar -->
             <nav class="flex flex-col gap-2 mt-4">
                 <a href="index.php" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-700 dark:text-gray-300 dark:hover:bg-blue-900/40 dark:hover:text-blue-200">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -88,28 +93,20 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                     <span class="hidden md:inline">Kalkulator</span>
                 </a>
             </nav>
-            <div class="mt-auto pt-8 border-t border-blue-100 dark:border-gray-800">
-                <a href="functions/logout.php" class="flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-900/40 dark:hover:text-red-300">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
-                    </svg>
-                    <span class="hidden md:inline">Logout</span>
-                </a>
-            </div>
         </aside>
-        <!-- Main Content -->
         <div class="flex-1 flex flex-col md:ml-60 ml-20">
-            <!-- Navbar -->
+            <!-- Navbar Atas -->
             <header class="bg-white/80 backdrop-blur shadow-sm flex items-center justify-between px-4 md:px-10 py-4 sticky top-0 z-20 dark:bg-gray-900/80 dark:shadow-gray-900/30">
                 <h1 class="text-xl md:text-2xl font-bold text-blue-700 dark:text-blue-200">Todo List</h1>
                 <div class="flex items-center gap-4">
-                    <!-- Dark mode toggle -->
+                    <!-- Tombol Toggle Dark Mode -->
                     <button id="darkModeToggle" class="p-2 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-gray-800 dark:text-blue-200 dark:hover:bg-gray-700" title="Toggle dark mode">
                         <svg id="darkModeIcon" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path id="sunIcon" class="block dark:hidden" stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.343 17.657l-1.414 1.414M17.657 17.657l-1.414-1.414M6.343 6.343L4.929 4.929M12 7a5 5 0 100 10 5 5 0 000-10z" />
                             <path id="moonIcon" class="hidden dark:block" stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
                         </svg>
                     </button>
+                    <!-- Dropdown Profil User -->
                     <div class="relative">
                         <button id="profileDropdownBtn" class="flex items-center gap-2 focus:outline-none group">
                             <span class="font-semibold text-gray-700 hidden md:inline dark:text-gray-200"><?= htmlspecialchars(get_user_by_id($user_login['id'])['fullname']) ?></span>
@@ -118,20 +115,39 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
-                        <div id="profileDropdownMenu" class="hidden absolute right-0 mt-2 w-40 bg-white rounded shadow-lg border z-30 dark:bg-gray-900 dark:border-gray-800">
-                            <a href="profile.php" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 dark:text-gray-200 dark:hover:bg-blue-900/40">View Profile</a>
+                        <!-- Menu Dropdown Profil -->
+                        <div id="profileDropdownMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 z-40 hidden">
+                            <a href="profile.php" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800">
+                                <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                View Profile
+                            </a>
+                            <div class="border-t border-gray-100 dark:border-gray-700 my-2"></div>
+                            <a href="functions/logout.php" class="flex items-center px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/40">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                                </svg>
+                                Logout
+                            </a>
                         </div>
                     </div>
                 </div>
             </header>
-            <!-- Content -->
+            <!-- Main Content -->
             <main class="flex-1 p-4 md:p-10">
+                <!-- Notifikasi Flash (Toast) -->
+                <?php if ($flash = getFlash("todo")): ?>
+                    <div id="toast-flash" style="position: fixed; top: 80px; right: 38px; z-index: 9999;">
+                        <?= $flash ?>
+                    </div>
+                <?php endif; ?>
                 <div class="mb-6">
                     <h2 class="text-lg md:text-xl font-semibold text-blue-800 mb-1 dark:text-blue-200">Halo, <?= htmlspecialchars(get_user_by_id($user_login['id'])['fullname']) ?>!</h2>
                     <p class="text-gray-500 dark:text-gray-300">Selamat datang di halaman Todo List! Semangat menyelesaikan tugas-tugasmu hari ini!</p>
                 </div>
                 <?php
-                // Urutkan: 1) status != Selesai, 2) due_date terdekat ke hari ini di atas, 3) status Selesai di bawah
+                // Urutkan todo: yang belum selesai di atas, jatuh tempo terdekat di atas, selesai di bawah
                 usort($filtered_todos, function ($a, $b) {
                     if ($a['status'] === 'Selesai' && $b['status'] !== 'Selesai') return 1;
                     if ($a['status'] !== 'Selesai' && $b['status'] === 'Selesai') return -1;
@@ -140,13 +156,14 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                     return $dateA <=> $dateB;
                 });
                 ?>
-                <!-- Todo List -->
+                <!-- Daftar Todo List -->
                 <div class="bg-white rounded-xl shadow-md p-6 border border-blue-100 dark:bg-gray-900 dark:border-gray-800">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="text-lg font-bold text-blue-600 dark:text-blue-300">Todo List</h3>
+                        <!-- Tombol Tambah Todo -->
                         <a href="#" onclick="openModal('add')" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800">+ Tambah Todo</a>
                     </div>
-                    <!-- Filter & Search Form -->
+                    <!-- Form Filter & Pencarian Todo -->
                     <form method="get" class="flex flex-wrap gap-3 mb-4 items-end">
                         <div>
                             <label class="block text-xs text-gray-500 mb-1 dark:text-gray-300">Status</label>
@@ -178,6 +195,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                         <a href="todo.php" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Reset</a>
                     </form>
                     <?php
+                    // Reminder tugas yang mendekati jatuh tempo dan yang sudah terlambat
                     $reminders = [];
                     $late_reminders = [];
                     $now = new DateTime('now');
@@ -209,6 +227,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                             }
                         }
                     }
+                    // Tampilkan notifikasi tugas yang terlambat
                     if (!empty($late_reminders)): ?>
                         <div class="mb-4">
                             <?php foreach ($late_reminders as $remind): ?>
@@ -224,6 +243,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
+                    <!-- Notifikasi tugas yang mendekati jatuh tempo -->
                     <?php if (!empty($reminders)): ?>
                         <div class="mb-4">
                             <?php foreach ($reminders as $remind): ?>
@@ -247,6 +267,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
+                    <!-- Tabel Daftar Todo -->
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-blue-100 dark:divide-blue-900/40">
                             <thead class="bg-blue-50 dark:bg-gray-800">
@@ -263,6 +284,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                             </thead>
                             <tbody class="divide-y divide-blue-50 dark:divide-blue-900/40">
                                 <?php
+                                // Fungsi format tanggal ke format Indonesia
                                 function format_tanggal($tanggal)
                                 {
                                     $bulan = [
@@ -293,6 +315,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                                     return htmlspecialchars($tanggal);
                                 }
 
+                                // Fungsi badge warna untuk prioritas
                                 function badge_prioritas($prioritas)
                                 {
                                     switch ($prioritas) {
@@ -307,6 +330,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                                     }
                                 }
 
+                                // Fungsi potong deskripsi agar tidak terlalu panjang di tabel
                                 function potong_deskripsi($desc, $max = 50)
                                 {
                                     $desc = strip_tags($desc);
@@ -316,11 +340,25 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                                     return htmlspecialchars($desc);
                                 }
 
+                                // Fungsi potong judul agar tidak terlalu panjang di tabel
+                                function potong_judul($judul, $max = 30)
+                                {
+                                    $judul = strip_tags($judul);
+                                    if (mb_strlen($judul) > $max) {
+                                        return htmlspecialchars(mb_substr($judul, 0, $max)) . '...';
+                                    }
+                                    return htmlspecialchars($judul);
+                                }
+
+                                // Looping data todo untuk ditampilkan di tabel
                                 $i = 1;
                                 foreach ($filtered_todos as $todo): ?>
-                                    <tr class="hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors">
+                                    <tr class="hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
+                                        onclick="openModal('edit', <?= htmlspecialchars(json_encode($todo)) ?>)">
                                         <td class="px-4 py-2 dark:text-gray-200"><?= $i++ ?></td>
-                                        <td class="px-4 py-2 dark:text-gray-200"><?= htmlspecialchars($todo['title']) ?></td>
+                                        <td class="px-4 py-2 dark:text-gray-200" title="<?= htmlspecialchars($todo['title']) ?>">
+                                            <?= potong_judul($todo['title'], 30) ?>
+                                        </td>
                                         <td class="px-4 py-2 max-w-xs truncate dark:text-gray-200" title="<?= htmlspecialchars($todo['description']) ?>">
                                             <?= potong_deskripsi($todo['description'], 50) ?>
                                         </td>
@@ -346,12 +384,16 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                                                 </span>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="px-4 py-2 flex gap-2">
-                                            <button onclick="openModal('edit', <?= htmlspecialchars(json_encode($todo)) ?>)" class="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-xs dark:bg-yellow-600 dark:hover:bg-yellow-700">Edit</button>
-                                            <button onclick="openModal('delete', <?= $todo['id'] ?>)" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs dark:bg-red-700 dark:hover:bg-red-800">Hapus</button>
+                                        <td class="px-4 py-2">
+                                            <!-- Tombol Edit dan Hapus -->
+                                            <div class="flex gap-2 justify-center items-center" onclick="event.stopPropagation();">
+                                                <button onclick="openModal('edit', <?= htmlspecialchars(json_encode($todo)) ?>)" class="bg-yellow-400 hover:bg-yellow-500 text-white px-2 py-1 rounded text-xs dark:bg-yellow-600 dark:hover:bg-yellow-700">Edit</button>
+                                                <button onclick="openModal('delete', <?= $todo['id'] ?>)" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs dark:bg-red-700 dark:hover:bg-red-800">Hapus</button>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
+                                <!-- Jika tidak ada todo -->
                                 <?php if (empty($filtered_todos)): ?>
                                     <tr>
                                         <td colspan="8" class="text-center text-gray-400 py-4 dark:text-gray-500">Tidak ada tugas ditemukan.</td>
@@ -364,11 +406,15 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
             </main>
         </div>
     </div>
-    <!-- Modal Tambah, Edit, Hapus -->
+
+    <!-- Modal Tambah/Edit/Hapus Todo -->
     <div id="modal-todo" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 hidden">
         <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative border border-blue-100 dark:bg-gray-900 dark:border-gray-800">
+            <!-- Tombol Tutup Modal -->
             <button onclick="closeModal()" class="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl dark:text-gray-300 dark:hover:text-gray-100">&times;</button>
+            <!-- Proses submit form todo -->
             <?= handle_todo_form_submit(); ?>
+            <!-- Form Tambah/Edit Todo -->
             <form id="todo-form" method="post" action="">
                 <input type="hidden" name="id" id="todo-id">
                 <h2 id="modal-title" class="text-xl font-bold mb-4 text-blue-700 dark:text-blue-200">Tambah Todo</h2>
@@ -393,6 +439,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                     <label class="block text-gray-700 mb-1 dark:text-gray-200">Tanggal Jatuh Tempo</label>
                     <input type="date" name="due_date" id="todo-due" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200" required>
                 </div>
+                <!-- Pilihan Status hanya muncul saat edit -->
                 <div class="mb-3" id="status-group" style="display:none;">
                     <label class="block text-gray-700 mb-1 dark:text-gray-200">Status</label>
                     <select name="status" id="todo-status" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200">
@@ -406,7 +453,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                     <button type="submit" id="modal-submit" class="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800">Simpan</button>
                 </div>
             </form>
-            <!-- Hapus Modal -->
+            <!-- Modal Konfirmasi Hapus Todo -->
             <div id="delete-group" class="hidden">
                 <p class="mb-4 text-gray-700 dark:text-gray-200">Yakin ingin menghapus tugas ini?</p>
                 <div class="flex justify-end gap-2">
@@ -420,24 +467,7 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
             </div>
         </div>
     </div>
-    <script>
-        // Dark mode toggle logic
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        const html = document.documentElement;
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            html.classList.add('dark');
-        } else {
-            html.classList.remove('dark');
-        }
-        darkModeToggle.addEventListener('click', () => {
-            html.classList.toggle('dark');
-            if (html.classList.contains('dark')) {
-                localStorage.setItem('theme', 'dark');
-            } else {
-                localStorage.setItem('theme', 'light');
-            }
-        });
-    </script>
+    <script src="assets/js/script.js"></script>
     <script src="assets/js/todo.js"></script>
 </body>
 
