@@ -2,8 +2,8 @@
 require_once 'functions.php';
 
 if (isset($_POST['login'])) {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
+    $username = htmlspecialchars($_POST['username'], ENT_QUOTES, 'UTF-8');
+    $password = htmlspecialchars($_POST['password'], ENT_QUOTES, 'UTF-8');
 
     $result = dbquery("SELECT * FROM users WHERE username='$username'");
     if (mysqli_num_rows($result) === 1) {

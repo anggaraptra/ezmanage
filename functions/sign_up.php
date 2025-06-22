@@ -2,12 +2,12 @@
 require_once 'functions.php';
 
 if (isset($_POST)) {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
-    $konfirmasi = $_POST['confirm'];
-    $fullname = $_POST['fullname'];
-    $email = $_POST['email'];
-    $city = $_POST['city'];
+    $username = htmlspecialchars($_POST['username'] ?? '', ENT_QUOTES, 'UTF-8');
+    $password = htmlspecialchars($_POST['password'] ?? '', ENT_QUOTES, 'UTF-8');
+    $konfirmasi = htmlspecialchars($_POST['confirm'] ?? '', ENT_QUOTES, 'UTF-8');
+    $fullname = htmlspecialchars($_POST['fullname'] ?? '', ENT_QUOTES, 'UTF-8');
+    $email = htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES, 'UTF-8');
+    $city = htmlspecialchars($_POST['city'] ?? '', ENT_QUOTES, 'UTF-8');
 
     // Validasi input
     if (empty($username) || empty($password) || empty($fullname) || empty($email) || empty($city)) {
@@ -38,6 +38,12 @@ if (isset($_POST)) {
     $emailCheck = dbquery("SELECT id FROM users WHERE email = '$email'");
     if ($emailCheck && mysqli_num_rows($emailCheck) > 0) {
         setFlash('auth', 'Email sudah terdaftar!', 'error');
+        header("Location: ../register.php");
+        exit;
+    }
+    // cek email apakah sudah valid
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        setFlash('auth', 'Format email tidak valid!', 'error');
         header("Location: ../register.php");
         exit;
     }

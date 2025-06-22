@@ -3,8 +3,8 @@ require_once "functions.php";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Ambil data dari form
-    $username = trim($_POST['username'] ?? '');
-    $email = trim($_POST['email'] ?? '');
+    $username = htmlspecialchars(trim($_POST['username'] ?? ''), ENT_QUOTES, 'UTF-8');
+    $email = htmlspecialchars(trim($_POST['email'] ?? ''), ENT_QUOTES, 'UTF-8');
     $password = $_POST['password'] ?? '';
     $confirm = $_POST['confirm'] ?? '';
 
