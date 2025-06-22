@@ -2,29 +2,37 @@
 require_once 'functions/functions.php';
 cek_session();
 
-// Handle Export CSV before any output
+// Tangani ekspor CSV sebelum output apapun
 if (isset($_POST['export_csv'])) {
+    // Ambil data user yang login dari session
     $user_login = $_SESSION['user'];
     $user_id = $user_login['id'];
     $csv_expenses = [];
+    // Query untuk mengambil data pengeluaran user beserta kategori
     $res = dbquery("SELECT e.date, c.name as category, e.description, e.amount, e.currency 
         FROM expenses e 
         LEFT JOIN categories_expenses c ON e.category_id = c.id 
         WHERE e.user_id=$user_id 
         ORDER BY e.date DESC");
+    // Loop setiap baris hasil query
     while ($row = mysqli_fetch_assoc($res)) {
+        // Jika currency kosong, set default ke 'IDR'
         $row['currency'] = $row['currency'] ?? 'IDR';
         $csv_expenses[] = $row;
     }
+    // Jika tidak ada data pengeluaran, tampilkan pesan dan redirect
     if (count($csv_expenses) === 0) {
-        // Do not process if there is no data
+        setFlash('expense', 'Tidak ada data pengeluaran untuk diekspor.', 'warning');
         header('Location: expenses.php');
         exit;
     }
+    // Set header untuk file CSV
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename=pengeluaran_' . date('Ymd') . '.csv');
     $output = fopen('php://output', 'w');
+    // Tulis header kolom CSV
     fputcsv($output, ['Tanggal', 'Kategori', 'Deskripsi', 'Jumlah', 'Mata Uang']);
+    // Tulis setiap baris data pengeluaran ke file CSV
     foreach ($csv_expenses as $exp) {
         fputcsv($output, [
             $exp['date'],
@@ -38,75 +46,106 @@ if (isset($_POST['export_csv'])) {
     exit;
 }
 
-// Define constants for repeated literals
+// Definisikan konstanta untuk redirect
 define('REDIRECT_EXPENSES', 'Location: expenses.php');
 
-// Get user login
+// Ambil data user yang login dari session
 $user_login = $_SESSION['user'];
 $user_id = $user_login['id'];
 
-// Handle add category
+// Tangani penambahan kategori baru
 if (isset($_POST['add_category']) && !empty(trim($_POST['new_category']))) {
+    // Ambil nama kategori baru dari input
     $new_cat = trim($_POST['new_category']);
+    // Query untuk menambah kategori baru ke database
     $sql = "INSERT INTO categories_expenses (user_id, name, created_at) VALUES ($user_id, '" . addslashes($new_cat) . "', NOW())";
     dbquery($sql);
+    // Set pesan sukses
+    setFlash('expense', 'Kategori "' . htmlspecialchars($new_cat) . '" berhasil ditambahkan.', 'success');
+    // Redirect ke halaman pengeluaran
     header(REDIRECT_EXPENSES);
     exit;
 }
 
-// Handle delete category
+// Tangani penghapusan kategori
 if (isset($_GET['delcat'])) {
     $cat_id = intval($_GET['delcat']);
+    // Ambil nama kategori sebelum dihapus untuk pesan flash
+    $cat_name = '';
+    $res = dbquery("SELECT name FROM categories_expenses WHERE id=$cat_id AND user_id=$user_id");
+    if ($row = mysqli_fetch_assoc($res)) {
+        $cat_name = $row['name'];
+    }
+    // Query untuk menghapus kategori
     $sql = "DELETE FROM categories_expenses WHERE id=$cat_id AND user_id=$user_id";
     dbquery($sql);
+    // Jika kategori ditemukan, tampilkan pesan sukses
+    if ($cat_name) {
+        setFlash('expense', 'Kategori "' . htmlspecialchars($cat_name) . '" berhasil dihapus.', 'success');
+    }
+    // Redirect ke halaman pengeluaran
     header(REDIRECT_EXPENSES);
     exit;
 }
 
-// Handle add expense
+// Tangani penambahan pengeluaran baru
 $add_expense_success = false;
 if (isset($_POST['add_expense'])) {
+    // Ambil data pengeluaran dari input
     $amount = floatval($_POST['amount']);
     $date = $_POST['date'];
     $category = intval($_POST['category']);
     $desc = addslashes(trim($_POST['description']));
     $currency = $_POST['currency'];
+    // Validasi input sebelum insert ke database
     if ($amount > 0 && $date && $category && $currency) {
+        // Query untuk menambah pengeluaran baru
         $sql = "INSERT INTO expenses (user_id, amount, currency, date, category_id, description, created_at) VALUES ($user_id, $amount, '$currency', '$date', $category, '$desc', NOW())";
         dbquery($sql);
+        // Set pesan sukses
+        setFlash('expense', 'Pengeluaran berhasil ditambahkan.', 'success');
         $add_expense_success = true;
+        // Redirect ke halaman pengeluaran
         header(REDIRECT_EXPENSES);
         exit;
     }
 }
 
-// Handle delete expense
+// Tangani penghapusan pengeluaran
 if (isset($_GET['delexp'])) {
     $exp_id = intval($_GET['delexp']);
+    // Query untuk menghapus pengeluaran
     $sql = "DELETE FROM expenses WHERE id=$exp_id AND user_id=$user_id";
     dbquery($sql);
+    // Set pesan sukses
+    setFlash('expense', 'Pengeluaran berhasil dihapus.', 'success');
+    // Redirect ke halaman pengeluaran
     header(REDIRECT_EXPENSES);
     exit;
 }
 
-// Handle edit category
+// Tangani edit kategori
 if (isset($_POST['edit_category']) && !empty(trim($_POST['edit_category_name'])) && isset($_POST['edit_category_id'])) {
     $edit_id = intval($_POST['edit_category_id']);
     $edit_name = trim($_POST['edit_category_name']);
+    // Query untuk update nama kategori
     $sql = "UPDATE categories_expenses SET name='" . addslashes($edit_name) . "' WHERE id=$edit_id AND user_id=$user_id";
     dbquery($sql);
+    // Set pesan sukses
+    setFlash('expense', 'Kategori berhasil diubah.', 'success');
+    // Redirect ke halaman pengeluaran
     header(REDIRECT_EXPENSES);
     exit;
 }
 
-// Get categories from database
+// Ambil daftar kategori dari database
 $categories = [];
 $res = dbquery("SELECT id, name FROM categories_expenses WHERE user_id=$user_id ORDER BY name");
 while ($row = mysqli_fetch_assoc($res)) {
     $categories[] = ['id' => $row['id'], 'name' => $row['name']];
 }
 
-// Get expenses list
+// Ambil daftar pengeluaran dari database
 $expenses = [];
 $res = dbquery("SELECT e.id, e.date, c.name as category, e.description, e.amount, e.category_id FROM expenses e LEFT JOIN categories_expenses c ON e.category_id = c.id WHERE e.user_id=$user_id ORDER BY e.date DESC");
 while ($row = mysqli_fetch_assoc($res)) {
@@ -116,11 +155,11 @@ while ($row = mysqli_fetch_assoc($res)) {
         'category' => $row['category'],
         'description' => $row['description'],
         'amount' => $row['amount'],
-        'currency' => 'IDR' // default, because currency field does not exist in expenses table
+        'currency' => 'IDR' // default, karena field currency tidak ada di tabel expenses
     ];
 }
 
-// Calculate total per currency (only IDR)
+// Hitung total pengeluaran per mata uang (hanya IDR)
 $total = [];
 foreach ($expenses as $exp) {
     $curr = $exp['currency'];
@@ -130,17 +169,18 @@ foreach ($expenses as $exp) {
     $total[$curr] += $exp['amount'];
 }
 
-// Monthly report (only IDR)
+// Laporan bulanan (hanya IDR)
 $monthly_report = [];
 $res = dbquery("SELECT DATE_FORMAT(date, '%Y-%m') as month, SUM(amount) as total FROM expenses WHERE user_id=$user_id GROUP BY month ORDER BY month DESC");
 while ($row = mysqli_fetch_assoc($res)) {
     $monthly_report[$row['month']] = ['IDR' => $row['total']];
 }
 
-// List of currencies (only IDR, because currency field does not exist in expenses table)
+// Daftar mata uang (hanya IDR, karena field currency tidak ada di tabel expenses)
 $currencies = [
     'IDR' => 'Rupiah (IDR)'
 ];
+// Ambil mata uang yang dipilih dari input, default ke IDR
 $selected_currency = $_POST['currency'] ?? 'IDR';
 
 // Ambil data user
@@ -204,14 +244,6 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                     <span class="hidden md:inline">Kalkulator</span>
                 </a>
             </nav>
-            <div class="mt-auto pt-8 border-t border-blue-100 dark:border-gray-800">
-                <a href="functions/logout.php" class="flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-900/40 dark:hover:text-red-300">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
-                    </svg>
-                    <span class="hidden md:inline">Logout</span>
-                </a>
-            </div>
         </aside>
         <div class="flex-1 flex flex-col md:ml-60 ml-20">
             <!-- Navbar -->
@@ -233,14 +265,32 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
-                        <div id="profileDropdownMenu" class="hidden absolute right-0 mt-2 w-40 bg-white rounded shadow-lg border z-30 dark:bg-gray-900 dark:border-gray-800">
-                            <a href="profile.php" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 dark:text-gray-200 dark:hover:bg-blue-900/40">View Profile</a>
+                        <div id="profileDropdownMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 z-40 hidden">
+                            <a href="profile.php" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800">
+                                <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                View Profile
+                            </a>
+                            <div class="border-t border-gray-100 dark:border-gray-700 my-2"></div>
+                            <a href="functions/logout.php" class="flex items-center px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/40">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                                </svg>
+                                Logout
+                            </a>
                         </div>
                     </div>
                 </div>
             </header>
             <!-- Content -->
             <main class="flex-1 p-2 md:p-6 lg:p-10 max-w-full w-full">
+                <!-- Toast Notification -->
+                <?php if ($flash = getFlash("expense")): ?>
+                    <div id="toast-flash" style="position: fixed; top: 80px; right: 38px; z-index: 9999;">
+                        <?= $flash ?>
+                    </div>
+                <?php endif; ?>
                 <div class="mb-6">
                     <h2 class="text-lg md:text-xl font-semibold text-blue-800 mb-1 dark:text-blue-200">
                         Halo, <?= htmlspecialchars(get_user_by_id($user_login['id'])['fullname']) ?>!
@@ -591,24 +641,8 @@ $profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $
                 amountInput.value = formatCurrency(raw, getCurrency());
             });
         }
-
-        // Dark mode toggle logic
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        const html = document.documentElement;
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            html.classList.add('dark');
-        } else {
-            html.classList.remove('dark');
-        }
-        darkModeToggle.addEventListener('click', () => {
-            html.classList.toggle('dark');
-            if (html.classList.contains('dark')) {
-                localStorage.setItem('theme', 'dark');
-            } else {
-                localStorage.setItem('theme', 'light');
-            }
-        });
     </script>
+    <script src="assets/js/script.js"></script>
     <script src="assets/js/expenses.js"></script>
 </body>
 
