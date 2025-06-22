@@ -1,26 +1,23 @@
 <?php
+// Memuat file fungsi dan melakukan pengecekan sesi login
 require_once 'functions/functions.php';
 cek_session();
 
+// Mengambil data user yang sedang login dari session
 $user_login = $_SESSION['user'];
 
-// Ambil data user
-$user = get_user_by_id($user_login['id']);
-// Cek apakah user sudah upload foto profile
-$profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $user['profile_pic'])
-    ? 'assets/profiles/' . $user['profile_pic']
-    : 'https://ui-avatars.com/api/?name=' . urlencode($user['fullname']) . '&background=4f8ef7&color=fff';
-
-// Fungsi hapus semua history kalkulasi user
+// Fungsi untuk menghapus semua riwayat kalkulasi user
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_history'])) {
     $user_id = intval($user_login['id']);
     dbquery("DELETE FROM calculations WHERE user_id = $user_id");
-    // Setelah hapus, reload halaman agar riwayat kosong
+    // Set pesan flash
+    setFlash('calculate', 'Semua riwayat kalkulasi berhasil dihapus.', 'success');
+    // Reload halaman setelah hapus
     header("Location: " . $_SERVER['REQUEST_URI']);
     exit;
 }
 
-// Tangani request AJAX untuk menyimpan kalkulasi (POST dari JS)
+// Menangani request AJAX untuk menyimpan kalkulasi (POST dari JS)
 if (
     $_SERVER['REQUEST_METHOD'] === 'POST' &&
     isset($_POST['expression']) &&
@@ -32,7 +29,7 @@ if (
     $user_id = intval($_SESSION['user']['id']);
     $expression = trim($_POST['expression']);
     $result = trim($_POST['result']);
-    // Hanya izinkan karakter yang aman pada ekspresi
+    // Validasi karakter pada ekspresi
     if (preg_match('/[^0-9\+\-\*\/\(\)\.\,\s^%a-zA-Z]/', $expression)) {
         echo json_encode(['status' => 'error', 'message' => 'Ekspresi tidak valid']);
         exit;
@@ -46,17 +43,17 @@ if (
     exit;
 }
 
-/*
- * Tangani submit form dan redirect SEBELUM output apapun
- * Exception khusus untuk ekspresi matematika tidak valid
- */
+// Definisi exception khusus untuk ekspresi matematika tidak valid
 class InvalidMathExpressionException extends Exception {}
 
-// Cegah duplikasi insert saat refresh menggunakan POST-REDIRECT-GET
+// Variabel untuk menyimpan pesan error kalkulasi
 $calc_error = '';
+// Variabel untuk menyimpan hasil kalkulasi
 $calc_result = '';
+
+// Proses kalkulasi jika request POST dari form HTML (bukan AJAX)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['expression']) && !isset($_POST['result'])) {
-    // Hanya proses POST dari form HTML, bukan dari AJAX
+    // Ambil ekspresi dari input user
     $expression = trim($_POST['expression']);
     $user_id = $user_login['id'];
     $result = null;
@@ -64,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['expression']) && !iss
     // Fungsi untuk evaluasi ekspresi matematika sederhana
     function evalMathExpression($expr)
     {
-        // Ganti fungsi matematika ke versi PHP
+        // Ganti nama fungsi matematika dari user ke versi PHP
         $expr = str_ireplace(
             ['sin', 'cos', 'tan', 'log', 'sqrt'],
             ['sin', 'cos', 'tan', 'log10', 'sqrt'],
@@ -72,24 +69,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['expression']) && !iss
         );
         // Ganti persen (misal 10% jadi 0.1)
         $expr = preg_replace('/(\d+(\.\d+)?)\s*%/', '($1/100)', $expr);
-        // Ganti koma dengan titik
+        // Ganti koma dengan titik agar sesuai format desimal PHP
         $expr = str_replace(',', '.', $expr);
-        // Cek karakter tidak valid
+        // Validasi karakter pada ekspresi
         if (preg_match('/[^0-9\+\-\*\/\(\)\.\,\s^%a-zA-Z]/', $expr)) {
             throw new InvalidMathExpressionException('Ekspresi mengandung karakter tidak valid.');
         }
-        // Ganti ^ dengan pow() untuk SEMUA kasus (termasuk variabel/ekspresi)
+        // Ganti operator pangkat (^) dengan fungsi pow() PHP
         $expr = preg_replace('/([a-zA-Z0-9_.()]+)\s*\^\s*([a-zA-Z0-9_.()]+)/', 'pow($1,$2)', $expr);
-        // Ganti % antara dua ekspresi menjadi operator modulo PHP
+        // Ganti operator % antara dua ekspresi menjadi operator modulo PHP
         $expr = preg_replace('/([a-zA-Z0-9_.()]+)\s*%\s*([a-zA-Z0-9_.()]+)/', '($1%$2)', $expr);
-        // Evaluasi dengan eval
+        // Siapkan ekspresi untuk dievaluasi dengan eval
         $expr = '$res = ' . $expr . ';';
         $res = null;
         try {
-            eval($expr);
+            eval($expr); // Evaluasi ekspresi matematika
         } catch (Throwable $e) {
             throw new InvalidMathExpressionException('Ekspresi tidak valid.');
         }
+        // Pastikan hasil adalah numerik
         if (!is_numeric($res)) {
             throw new InvalidMathExpressionException('Ekspresi tidak valid.');
         }
@@ -97,36 +95,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['expression']) && !iss
     }
 
     try {
-        // Evaluasi ekspresi matematika
+        // Evaluasi ekspresi matematika yang dimasukkan user
         $result = evalMathExpression($expression);
         // Pembulatan hasil ke 4 desimal, hapus nol di belakang
         $result_rounded = rtrim(rtrim(number_format((float)$result, 4, '.', ''), '0'), '.');
         $calc_result = $result_rounded;
-        // Simpan ke database dengan query parameterized
+        // Escape input sebelum disimpan ke database
         $user_id_esc = intval($user_id);
         $expression_esc = mysqli_real_escape_string($mysqli, $expression);
         $result_esc = mysqli_real_escape_string($mysqli, $result_rounded);
+        // Simpan ekspresi dan hasil ke database
         dbquery("INSERT INTO calculations (user_id, calculation, result, created_at) VALUES ($user_id_esc, '$expression_esc', '$result_esc', NOW())");
 
-        // Redirect untuk mencegah resubmission saat refresh (PRG pattern)
+        // Redirect ke halaman yang sama dengan parameter hasil (PRG pattern)
         header("Location: " . $_SERVER['REQUEST_URI'] . "?calc_result=" . urlencode($calc_result));
         exit;
     } catch (InvalidMathExpressionException $e) {
+        // Tangkap error ekspresi matematika tidak valid
         $calc_error = $e->getMessage();
     } catch (Exception $e) {
+        // Tangkap error umum
         $calc_error = 'Terjadi kesalahan.';
     }
 } elseif (isset($_GET['calc_result'])) {
-    // Ambil hasil kalkulasi dari parameter GET jika ada
+    // Jika ada parameter hasil kalkulasi di GET, ambil nilainya
     $calc_result = $_GET['calc_result'];
 }
 
-// Ambil riwayat kalkulasi user
+// Ambil riwayat kalkulasi user dari database
 $user_id = $user_login['id'];
 $history = [];
 $user_id_safe = intval($user_id);
 $q = dbquery("SELECT calculation, result, created_at FROM calculations WHERE user_id = $user_id_safe ORDER BY created_at DESC LIMIT 50");
 if ($q) {
+    // Loop hasil query dan simpan ke array riwayat
     while ($row = mysqli_fetch_assoc($q)) {
         $history[] = [
             'calculation' => $row['calculation'],
@@ -135,6 +137,13 @@ if ($q) {
         ];
     }
 }
+
+// Ambil data user
+$user = get_user_by_id($user_login['id']);
+// Cek apakah user sudah upload foto profile
+$profilePic = !empty($user['profile_pic']) && file_exists('assets/profiles/' . $user['profile_pic'])
+    ? 'assets/profiles/' . $user['profile_pic']
+    : 'https://ui-avatars.com/api/?name=' . urlencode($user['fullname']) . '&background=4f8ef7&color=fff';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -154,7 +163,7 @@ if ($q) {
 
 <body class="bg-gradient-to-br from-blue-50 to-white min-h-screen font-sans dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-800">
     <div class="flex min-h-screen">
-        <!-- Sidebar -->
+        <!-- Sidebar Navigasi -->
         <aside class="w-20 md:w-60 bg-white border-r border-blue-100 flex flex-col py-6 px-2 md:px-6 shadow-lg fixed inset-y-0 left-0 z-30 dark:bg-gray-900 dark:border-gray-800">
             <div class="mb-10 flex items-center justify-center md:justify-start gap-3">
                 <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -163,6 +172,7 @@ if ($q) {
                 <span class="hidden md:inline text-2xl font-bold tracking-wide text-blue-700 dark:text-blue-200">EzManage</span>
             </div>
             <nav class="flex flex-col gap-2 mt-4">
+                <!-- Link Navigasi -->
                 <a href="index.php" class="flex items-center gap-2 px-3 py-2 rounded-lg text-gray-600 hover:bg-blue-50 hover:text-blue-700 dark:text-gray-300 dark:hover:bg-blue-900/40 dark:hover:text-blue-200">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18" />
@@ -190,28 +200,21 @@ if ($q) {
                     <span class="hidden md:inline">Kalkulator</span>
                 </a>
             </nav>
-            <div class="mt-auto pt-8 border-t border-blue-100 dark:border-gray-800">
-                <a href="functions/logout.php" class="flex items-center gap-2 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-900/40 dark:hover:text-red-300">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
-                    </svg>
-                    <span class="hidden md:inline">Logout</span>
-                </a>
-            </div>
         </aside>
         <!-- Main Content -->
         <div class="flex-1 flex flex-col md:ml-60 ml-20">
-            <!-- Navbar -->
+            <!-- Navbar Atas -->
             <header class="bg-white/80 backdrop-blur shadow-sm flex items-center justify-between px-4 md:px-10 py-4 sticky top-0 z-20 dark:bg-gray-900/80 dark:shadow-gray-900/30">
                 <h1 class="text-xl md:text-2xl font-bold text-blue-700 dark:text-blue-200">Kalkulator</h1>
                 <div class="flex items-center gap-4">
-                    <!-- Dark mode toggle -->
+                    <!-- Tombol Dark Mode -->
                     <button id="darkModeToggle" class="p-2 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-gray-800 dark:text-blue-200 dark:hover:bg-gray-700" title="Toggle dark mode">
                         <svg id="darkModeIcon" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path id="sunIcon" class="block dark:hidden" stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.343 17.657l-1.414 1.414M17.657 17.657l-1.414-1.414M6.343 6.343L4.929 4.929M12 7a5 5 0 100 10 5 5 0 000-10z" />
                             <path id="moonIcon" class="hidden dark:block" stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
                         </svg>
                     </button>
+                    <!-- Dropdown Profil User -->
                     <div class="relative">
                         <button id="profileDropdownBtn" class="flex items-center gap-2 focus:outline-none group">
                             <span class="font-semibold text-gray-700 hidden md:inline dark:text-gray-200"><?= htmlspecialchars(get_user_by_id($user_login['id'])['fullname']) ?></span>
@@ -220,15 +223,34 @@ if ($q) {
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                         </button>
-                        <div id="profileDropdownMenu" class="hidden absolute right-0 mt-2 w-40 bg-white rounded shadow-lg border z-30 dark:bg-gray-900 dark:border-gray-800">
-                            <a href="profile.php" class="block px-4 py-2 text-gray-700 hover:bg-blue-50 dark:text-gray-200 dark:hover:bg-blue-900/40">View Profile</a>
+                        <div id="profileDropdownMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 z-40 hidden">
+                            <a href="profile.php" class="flex items-center px-4 py-2 text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800">
+                                <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                View Profile
+                            </a>
+                            <div class="border-t border-gray-100 dark:border-gray-700 my-2"></div>
+                            <a href="functions/logout.php" class="flex items-center px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/40">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7" />
+                                </svg>
+                                Logout
+                            </a>
                         </div>
                     </div>
                 </div>
             </header>
-            <!-- Content -->
+            <!-- Main Content: Section Utama -->
             <main class="flex-1 p-4 md:p-10">
+                <!-- Notifikasi Flash (Toast) -->
+                <?php if ($flash = getFlash("calculate")): ?>
+                    <div id="toast-flash" style="position: fixed; top: 80px; right: 38px; z-index: 9999;">
+                        <?= $flash ?>
+                    </div>
+                <?php endif; ?>
                 <div class="mb-6">
+                    <!-- Salam & Deskripsi -->
                     <h2 class="text-lg md:text-xl font-semibold text-blue-800 mb-1 dark:text-blue-200">
                         Halo, <?= htmlspecialchars(get_user_by_id($user_login['id'])['fullname']) ?>!
                     </h2>
@@ -239,7 +261,7 @@ if ($q) {
 
                 <!-- Kalkulator Matematika & Riwayat -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-                    <!-- Kalkulator -->
+                    <!-- Kalkulator Matematika -->
                     <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-6 flex flex-col justify-between min-h-[420px]">
                         <h2 class="text-xl font-bold text-blue-600 dark:text-blue-300 mb-4 flex items-center gap-2">
                             <svg class="w-6 h-6 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -249,13 +271,14 @@ if ($q) {
                             Kalkulator Matematika
                         </h2>
                         <div class="flex-1 flex flex-col justify-between">
-                            <!-- Error -->
+                            <!-- Error Kalkulasi -->
                             <div id="calc-error" class="bg-red-100 border border-red-300 text-red-700 px-4 py-2 rounded mb-3 text-center dark:bg-red-900 dark:border-red-700 dark:text-red-300" style="display:none;"></div>
-                            <!-- Form -->
+                            <!-- Form Kalkulator -->
                             <form id="math-calc-form" class="flex flex-col gap-3 mb-3" autocomplete="off">
                                 <input type="text" name="expression" id="expression" placeholder="Contoh: 5 + sin(0.5) * 10" required class="border rounded-lg px-3 py-2 text-lg focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100" />
                                 <div class="flex flex-wrap gap-2">
                                     <?php
+                                    // Tombol operator matematika
                                     $ops = ['+', '-', '*', '/', '(', ')', '^', '%', 'sin()', 'cos()', 'tan()', 'log()', 'sqrt()'];
                                     foreach ($ops as $op): ?>
                                         <button type="button" onclick="insertOp('<?= str_replace('()', '', $op) ?>')" class="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200 text-sm dark:bg-blue-900/40 dark:text-blue-200 dark:hover:bg-blue-900/60"><?= $op ?></button>
@@ -266,7 +289,7 @@ if ($q) {
                                     <button type="button" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 w-full dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700" onclick="resetCalcResult()">Reset</button>
                                 </div>
                             </form>
-                            <!-- Hasil -->
+                            <!-- Hasil Kalkulasi -->
                             <div id="calc-result" class="bg-blue-100 border border-blue-300 text-blue-800 font-bold px-4 py-3 rounded-lg mb-3 text-center dark:bg-blue-900/40 dark:border-blue-700 dark:text-blue-200" style="display:none;">
                                 Hasil: <span id="calc-result-value"></span>
                             </div>
@@ -281,17 +304,20 @@ if ($q) {
                         <div class="flex items-center justify-between mb-2">
                             <h3 class="text-lg font-semibold text-blue-600 dark:text-blue-300">Riwayat Kalkulasi</h3>
                             <div class="flex gap-2 flex-wrap">
+                                <!-- Tombol Muat Ulang Riwayat -->
                                 <form method="post" style="display:inline;">
                                     <button type="submit" name="refresh_history" class="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg hover:bg-blue-200 text-sm flex items-center gap-1 dark:bg-blue-900/40 dark:text-blue-200 dark:hover:bg-blue-900/60" title="Muat Ulang">
                                         Muat Ulang
                                     </button>
                                 </form>
+                                <!-- Tombol Ekspor CSV -->
                                 <button type="button" onclick="exportHistoryCSV()" class="bg-green-100 text-green-700 px-3 py-1 rounded-lg hover:bg-green-200 text-sm flex items-center gap-1 dark:bg-green-900/40 dark:text-green-200 dark:hover:bg-green-900/60" title="Ekspor CSV">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                                     </svg>
                                     CSV
                                 </button>
+                                <!-- Tombol Ekspor PDF -->
                                 <button type="button" onclick="exportHistoryPDF()" class="bg-red-100 text-red-700 px-3 py-1 rounded-lg hover:bg-red-200 text-sm flex items-center gap-1 dark:bg-red-900/40 dark:text-red-200 dark:hover:bg-red-900/60" title="Ekspor PDF">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
@@ -299,20 +325,24 @@ if ($q) {
                                     </svg>
                                     PDF
                                 </button>
-                                <form method="post" style="display:inline;" onsubmit="return confirm('Apakah Anda yakin ingin menghapus semua riwayat kalkulasi?');">
-                                    <button type="submit" name="delete_history" class="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 text-sm flex items-center gap-1 dark:bg-red-700 dark:hover:bg-red-800" title="Hapus Semua Riwayat">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                        Hapus
-                                    </button>
-                                </form>
+                                <!-- Tombol Hapus Semua Riwayat -->
+                                <button type="button"
+                                    class="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 text-sm flex items-center gap-1 dark:bg-red-700 dark:hover:bg-red-800"
+                                    title="Hapus Semua Riwayat"
+                                    onclick="document.getElementById('modal-delete-history').classList.remove('hidden')">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Hapus
+                                </button>
                             </div>
                         </div>
                         <div class="max-h-80 overflow-y-auto border border-blue-100 rounded-lg bg-blue-50 p-3 flex-1 dark:bg-blue-900/20 dark:border-blue-900">
                             <?php if (empty($history)): ?>
+                                <!-- Pesan jika belum ada riwayat -->
                                 <div class="text-gray-500 text-center py-8 dark:text-gray-400">Belum ada riwayat kalkulasi.</div>
                             <?php else: ?>
+                                <!-- Tabel Riwayat Kalkulasi -->
                                 <table class="w-full text-sm" id="calc-history-table">
                                     <thead>
                                         <tr class="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
@@ -324,9 +354,14 @@ if ($q) {
                                     <tbody>
                                         <?php foreach ($history as $row): ?>
                                             <?php
+                                            // Format hasil kalkulasi
                                             $result = $row['result'];
-                                            if (is_numeric($result) && floor($result) == $result) {
-                                                $display_result = number_format($result, 0, '.', '');
+                                            if (is_numeric($result)) {
+                                                if (floor($result) == $result) {
+                                                    $display_result = number_format($result, 0, ',', ',');
+                                                } else {
+                                                    $display_result = rtrim(rtrim(number_format($result, 4, ',', ','), '0'), ',');
+                                                }
                                             } else {
                                                 $display_result = $result;
                                             }
@@ -355,7 +390,7 @@ if ($q) {
                         Kalkulator Keuangan
                     </h2>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <!-- Bunga Pinjaman -->
+                        <!-- Kalkulator Bunga Pinjaman -->
                         <div class="border rounded-xl p-4 flex flex-col dark:border-gray-700 bg-purple-50/30 dark:bg-purple-900/10">
                             <h3 class="font-semibold text-purple-700 dark:text-purple-300 mb-2">Bunga Pinjaman</h3>
                             <form id="loan-interest-form" class="flex flex-col gap-2" onsubmit="event.preventDefault(); calcLoanInterest();">
@@ -372,7 +407,7 @@ if ($q) {
                                 <span id="loan-interest-result" class="text-purple-700 font-bold dark:text-purple-300"></span>
                             </div>
                         </div>
-                        <!-- Amortisasi Pinjaman -->
+                        <!-- Kalkulator Amortisasi Pinjaman -->
                         <div class="border rounded-xl p-4 flex flex-col dark:border-gray-700 bg-purple-50/30 dark:bg-purple-900/10">
                             <h3 class="font-semibold text-purple-700 dark:text-purple-300 mb-2">Amortisasi Pinjaman</h3>
                             <form id="amortization-form" class="flex flex-col gap-2" onsubmit="event.preventDefault(); calcAmortization();">
@@ -543,25 +578,31 @@ if ($q) {
             </main>
         </div>
     </div>
+
+    <!-- Modal Konfirmasi Hapus Riwayat -->
+    <div id="modal-delete-history" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 hidden">
+        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 w-full max-w-sm">
+            <h4 class="text-lg font-semibold text-red-600 dark:text-red-400 mb-2">Konfirmasi Hapus Riwayat</h4>
+            <p class="text-gray-700 dark:text-gray-200 mb-4">Apakah Anda yakin ingin menghapus <b>semua riwayat kalkulasi</b>? Tindakan ini tidak dapat dibatalkan.</p>
+            <div class="flex justify-end gap-2">
+                <button type="button"
+                    class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                    onclick="document.getElementById('modal-delete-history').classList.add('hidden')">
+                    Batal
+                </button>
+                <form method="post" style="display:inline;">
+                    <button type="submit" name="delete_history"
+                        class="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 dark:bg-red-700 dark:hover:bg-red-800">
+                        Hapus
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- Script JS: Fungsi Kalkulator, Riwayat, dll -->
+    <script src="assets/js/script.js"></script>
     <script src="assets/js/calculations.js"></script>
     <script>
-        // Dark mode toggle logic
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        const html = document.documentElement;
-        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            html.classList.add('dark');
-        } else {
-            html.classList.remove('dark');
-        }
-        darkModeToggle.addEventListener('click', () => {
-            html.classList.toggle('dark');
-            if (html.classList.contains('dark')) {
-                localStorage.setItem('theme', 'dark');
-            } else {
-                localStorage.setItem('theme', 'light');
-            }
-        });
-
         // Saat halaman dimuat, jika ada hasil (dari PHP PRG), muat ulang riwayat agar selalu terbaru
         <?php if (!empty($calc_result)): ?>
             document.addEventListener('DOMContentLoaded', function() {
