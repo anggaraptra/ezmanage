@@ -1,8 +1,17 @@
 <?php
 require_once 'functions.php';
 
+// Pastikan ada session login
+if (!isset($_SESSION['login']) || !$_SESSION['login']) {
+    setFlash('auth', 'Anda harus login terlebih dahulu.', 'error');
+    header('Location: ../login_page.php');
+    exit;
+}
+
+// Fungsi untuk mengedit profil pengguna
 function editProfile($user_id, $fullname, $current_password, $new_password, $confirm_password)
 {
+    // menampung error
     $errors = [];
 
     // Ambil data user lama untuk pengecekan perubahan
@@ -17,28 +26,32 @@ function editProfile($user_id, $fullname, $current_password, $new_password, $con
     // Validasi perubahan password
     $password_changed = false;
     if (!empty($current_password) || !empty($new_password) || !empty($confirm_password)) {
+        // Validasi password
         if (empty($current_password)) {
             $errors['current_password'] = "Password saat ini wajib diisi.";
             setFlash('edit_profile', $errors['current_password'], 'error');
         }
+        // Validasi password baru
         if (empty($new_password)) {
             $errors['new_password'] = "Password baru wajib diisi.";
             setFlash('edit_profile', $errors['new_password'], 'error');
         }
+        // Validasi konfirmasi password baru
         if (empty($confirm_password)) {
             $errors['confirm_password'] = "Konfirmasi password baru wajib diisi.";
             setFlash('edit_profile', $errors['confirm_password'], 'error');
         }
-
+        // Validasi kecocokan password baru dan konfirmasi
         if ($new_password !== $confirm_password) {
             $errors['confirm_password'] = "Konfirmasi password baru tidak cocok.";
             setFlash('edit_profile', $errors['confirm_password'], 'error');
         }
-
+        // Validasi kecocokan password saat ini dengan yang ada di database
         $sql = "SELECT password_hash FROM users WHERE id = '$user_id'";
         $result = dbquery($sql);
         $user = mysqli_fetch_assoc($result);
 
+        // Jika user ditemukan dan password saat ini tidak cocok
         if ($user && !password_verify($current_password, $user['password_hash'])) {
             $errors['current_password'] = "Password saat ini salah.";
             setFlash('edit_profile', $errors['current_password'], 'error');
@@ -59,8 +72,9 @@ function editProfile($user_id, $fullname, $current_password, $new_password, $con
         $profile_pic_changed = true;
     }
 
+    // Jika ada error, tampilkan pesan error
     if (!empty($errors)) {
-        // Set flash messages for each error
+        // Tampilkan semua error yang ditemukan
         foreach ($errors as $field => $msg) {
             $type = (stripos($msg, 'berhasil') !== false) ? 'success' : 'error';
             setFlash('edit_profile' . $field, $msg, $type);
@@ -74,13 +88,17 @@ function editProfile($user_id, $fullname, $current_password, $new_password, $con
         return true;
     }
 
+    // Siapkan data untuk update
     $update_data = [];
+    // Update nama lengkap jika berubah
     $fullname_updated = false;
+    // Cek apakah fullname berubah
     if ($fullname_changed) {
         $update_data[] = "fullname = '$fullname'";
         $fullname_updated = true;
     }
 
+    // Update password jika berubah
     if ($password_changed) {
         $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
         $update_data[] = "password_hash = '$hashed_password'";
@@ -191,7 +209,7 @@ function editProfile($user_id, $fullname, $current_password, $new_password, $con
     }
 }
 
-// Main execution block
+// Cek jika request method adalah POST
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $user_id = $_POST['user_id'];
     $fullname = $_POST['fullname'];
@@ -199,6 +217,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $new_password = $_POST['new_password'];
     $confirm_password = $_POST['confirm_password'];
 
+    // edit profil pengguna
     if (editProfile($user_id, $fullname, $current_password, $new_password, $confirm_password)) {
         header("Location: ../profile.php");
         exit();
