@@ -1,4 +1,4 @@
-// Dropdown toggle script
+// Script toggle dropdown profil
 const btn = document.getElementById('profileDropdownBtn');
 const menu = document.getElementById('profileDropdownMenu');
 btn.addEventListener('click', function (e) {
@@ -9,7 +9,24 @@ document.addEventListener('click', function () {
   menu.classList.add('hidden');
 });
 
-// Export history to CSV
+// Logika toggle mode gelap (dark mode)
+const darkModeToggle = document.getElementById('darkModeToggle');
+const html = document.documentElement;
+if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+  html.classList.add('dark');
+} else {
+  html.classList.remove('dark');
+}
+darkModeToggle.addEventListener('click', () => {
+  html.classList.toggle('dark');
+  if (html.classList.contains('dark')) {
+    localStorage.setItem('theme', 'dark');
+  } else {
+    localStorage.setItem('theme', 'light');
+  }
+});
+
+// Fungsi untuk ekspor riwayat kalkulasi ke CSV
 function exportHistoryCSV() {
   const table = document.getElementById('calc-history-table');
   if (!table) return;
@@ -19,7 +36,7 @@ function exportHistoryCSV() {
     let cols = row.querySelectorAll('th,td');
     let rowData = [];
     for (let col of cols) {
-      // Remove line breaks and quotes
+      // Hilangkan line break dan tanda kutip
       let text = col.innerText.replace(/(\r\n|\n|\r)/gm, ' ').replace(/"/g, '""');
       rowData.push('"' + text + '"');
     }
@@ -37,11 +54,11 @@ function exportHistoryCSV() {
   document.body.removeChild(link);
 }
 
-// Export history to PDF (simple, using window.print)
+// Fungsi untuk ekspor riwayat kalkulasi ke PDF (menggunakan window.print)
 function exportHistoryPDF() {
   const table = document.getElementById('calc-history-table');
   if (!table) return;
-  // Clone table for print
+  // Clone tabel untuk dicetak
   let printWindow = window.open('', '', 'width=800,height=600');
   printWindow.document.write('<html><head><title>Riwayat Kalkulasi</title>');
   printWindow.document.write('<style>body{font-family:sans-serif;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:6px;}th{background:#f0f0f0;}</style>');
@@ -52,25 +69,25 @@ function exportHistoryPDF() {
   printWindow.document.close();
   printWindow.focus();
   printWindow.print();
-  // Optionally auto-close after print
+  // Tutup otomatis setelah print
   printWindow.onafterprint = function () {
     printWindow.close();
   };
 }
 
-// Tampilkan hasil kalkulasi dari riwayat
+// Fungsi untuk menampilkan hasil kalkulasi dari riwayat
 function showHistoryCalc(expr, result) {
-  // Set input value
+  // Set nilai input ekspresi
   document.getElementById('expression').value = expr;
-  // Show result
+  // Tampilkan hasil
   document.getElementById('calc-result-value').textContent = result;
   document.getElementById('calc-result').style.display = '';
-  // Hide error if any
-  var err = document.getElementById('calc-error');
+  // Sembunyikan error jika ada
+  let err = document.getElementById('calc-error');
   if (err) err.style.display = 'none';
 }
 
-// Insert operator/function to input
+// Fungsi untuk memasukkan operator/fungsi ke input kalkulator
 function insertOp(op) {
   const input = document.getElementById('expression');
   const val = input.value;
@@ -82,7 +99,7 @@ function insertOp(op) {
   input.focus();
 }
 
-// Reset result
+// Fungsi untuk mereset hasil kalkulasi
 function resetCalcResult() {
   document.getElementById('expression').value = '';
   document.getElementById('calc-result').style.display = 'none';
@@ -91,34 +108,34 @@ function resetCalcResult() {
   document.getElementById('calc-error').textContent = '';
 }
 
-// Math expression evaluator (matches PHP logic)
+// Fungsi evaluator ekspresi matematika (cocok dengan logika PHP)
 function evalMathExpression(expr) {
-  // Replace math functions to JS equivalents
+  // Ganti fungsi matematika ke bentuk JavaScript
   expr = expr
     .replace(/sin\s*\(/gi, 'Math.sin(')
     .replace(/cos\s*\(/gi, 'Math.cos(')
     .replace(/tan\s*\(/gi, 'Math.tan(')
     .replace(/log\s*\(/gi, 'Math.log10(')
     .replace(/sqrt\s*\(/gi, 'Math.sqrt(');
-  // Replace percent (e.g. 10% to (10/100))
+  // Ganti persen (misal: 10% menjadi (10/100))
   expr = expr.replace(/(\d+(\.\d+)?)\s*%/g, '($1/100)');
-  // Replace ^ with Math.pow
+  // Ganti ^ dengan Math.pow
   expr = expr.replace(/(\d+(\.\d+)?)\s*\^\s*(\d+(\.\d+)?)/g, 'Math.pow($1,$3)');
-  // Replace comma with dot
+  // Ganti koma dengan titik
   expr = expr.replace(/,/g, '.');
-  // Only allow safe characters, including ^ and %
+  // Hanya izinkan karakter yang aman, termasuk ^ dan %
   if (/[^0-9+\-*/().\s^%a-zA-Z]/.test(expr)) {
     throw new Error('Ekspresi mengandung karakter tidak valid.');
   }
-  // Prevent empty expression
+  // Cegah ekspresi kosong
   if (!expr.trim()) {
     throw new Error('Ekspresi kosong.');
   }
-  // Replace ^ with Math.pow for all cases (including variables/expressions)
+  // Ganti ^ dengan Math.pow untuk semua kasus (termasuk variabel/ekspresi)
   expr = expr.replace(/([a-zA-Z0-9_.()]+)\s*\^\s*([a-zA-Z0-9_.()]+)/g, 'Math.pow($1,$2)');
-  // Replace % with JavaScript modulo operator
+  // Ganti % dengan operator modulo JavaScript
   expr = expr.replace(/([a-zA-Z0-9_.()]+)\s*%\s*([a-zA-Z0-9_.()]+)/g, '($1%$2)');
-  // Evaluate
+  // Evaluasi ekspresi
   let res = Function('"use strict";return (' + expr + ')')();
   if (typeof res !== 'number' || isNaN(res) || !isFinite(res)) {
     throw new Error('Ekspresi tidak valid.');
@@ -126,7 +143,7 @@ function evalMathExpression(expr) {
   return res;
 }
 
-// Handle form submit
+// Event handler submit form kalkulator matematika
 document.getElementById('math-calc-form').addEventListener('submit', function (e) {
   e.preventDefault();
   document.getElementById('calc-result').style.display = 'none';
@@ -134,11 +151,11 @@ document.getElementById('math-calc-form').addEventListener('submit', function (e
   const expr = document.getElementById('expression').value.trim();
   try {
     let result = evalMathExpression(expr);
-    // Round to 4 decimals, remove trailing zeros
+    // Pembulatan ke 4 desimal, hapus nol di belakang
     let resultRounded = parseFloat(result.toFixed(4)).toString();
     document.getElementById('calc-result-value').textContent = resultRounded;
     document.getElementById('calc-result').style.display = '';
-    // Send to server via AJAX to save history
+    // Kirim ke server via AJAX untuk simpan riwayat
     saveCalculation(expr, resultRounded, true);
   } catch (err) {
     document.getElementById('calc-error').textContent = err.message;
@@ -146,6 +163,7 @@ document.getElementById('math-calc-form').addEventListener('submit', function (e
   }
 });
 
+// Fungsi untuk menyimpan kalkulasi ke server dan reload riwayat via AJAX
 function saveCalculation(expression, result) {
   fetch(window.location.pathname, {
     method: 'POST',
@@ -157,13 +175,13 @@ function saveCalculation(expression, result) {
     .then((res) => res.json())
     .then((data) => {
       if (data && data.status === 'ok') {
-        // Reload history via AJAX
+        // Reload riwayat via AJAX
         reloadHistory();
       }
     });
 }
 
-// Kalkulator Bunga Pinjaman Sederhana
+// Fungsi kalkulator bunga pinjaman sederhana
 function calcLoanInterest() {
   const amount = parseFloat(document.getElementById('loan-amount').value);
   const rate = parseFloat(document.getElementById('loan-rate').value);
@@ -178,7 +196,7 @@ function calcLoanInterest() {
   document.getElementById('loan-interest-result').textContent = result;
 }
 
-// Kalkulator Amortisasi Pinjaman (Angsuran Tetap)
+// Fungsi kalkulator amortisasi pinjaman (angsuran tetap)
 function calcAmortization() {
   const P = parseFloat(document.getElementById('amort-loan').value);
   const r = parseFloat(document.getElementById('amort-rate').value) / 100 / 12;
@@ -197,7 +215,7 @@ function calcAmortization() {
   document.getElementById('amortization-result').textContent = result;
 }
 
-// Kalkulator Investasi (Future Value dengan tambahan tahunan)
+// Fungsi kalkulator investasi (future value dengan tambahan tahunan)
 function calcInvestment() {
   const principal = parseFloat(document.getElementById('invest-principal').value);
   const rate = parseFloat(document.getElementById('invest-rate').value) / 100;
@@ -220,7 +238,7 @@ function calcInvestment() {
   document.getElementById('investment-result').textContent = result;
 }
 
-// Reset fungsi untuk setiap kalkulator keuangan
+// Fungsi reset untuk kalkulator bunga pinjaman sederhana
 function resetLoanInterest() {
   document.getElementById('loan-amount').value = '';
   document.getElementById('loan-rate').value = '';
@@ -228,6 +246,7 @@ function resetLoanInterest() {
   document.getElementById('loan-interest-result').textContent = '';
 }
 
+// Fungsi reset untuk kalkulator amortisasi pinjaman
 function resetAmortization() {
   document.getElementById('amort-loan').value = '';
   document.getElementById('amort-rate').value = '';
@@ -235,6 +254,7 @@ function resetAmortization() {
   document.getElementById('amortization-result').textContent = '';
 }
 
+// Fungsi reset untuk kalkulator investasi
 function resetInvestment() {
   document.getElementById('invest-principal').value = '';
   document.getElementById('invest-rate').value = '';
@@ -243,7 +263,7 @@ function resetInvestment() {
   document.getElementById('investment-result').textContent = '';
 }
 
-// Konversi Panjang
+// Fungsi konversi panjang
 function convertLength() {
   const value = parseFloat(document.getElementById('length-value').value);
   const from = document.getElementById('length-from').value;
@@ -271,7 +291,7 @@ function convertLength() {
   document.getElementById('length-result').textContent = result;
 }
 
-// Konversi Berat
+// Fungsi konversi berat
 function convertWeight() {
   const value = parseFloat(document.getElementById('weight-value').value);
   const from = document.getElementById('weight-from').value;
@@ -297,7 +317,7 @@ function convertWeight() {
   document.getElementById('weight-result').textContent = result;
 }
 
-// Konversi Suhu
+// Fungsi konversi suhu
 function convertTemp() {
   const value = parseFloat(document.getElementById('temp-value').value);
   const from = document.getElementById('temp-from').value;
@@ -309,11 +329,11 @@ function convertTemp() {
     result = value + ' ' + to.toUpperCase();
   } else {
     let tempC;
-    // Convert to Celsius first
+    // Konversi ke Celsius terlebih dahulu
     if (from === 'c') tempC = value;
     else if (from === 'f') tempC = ((value - 32) * 5) / 9;
     else if (from === 'k') tempC = value - 273.15;
-    // Convert from Celsius to target
+    // Konversi dari Celsius ke satuan target
     let final;
     if (to === 'c') final = tempC;
     else if (to === 'f') final = (tempC * 9) / 5 + 32;
@@ -323,7 +343,7 @@ function convertTemp() {
   document.getElementById('temp-result').textContent = result;
 }
 
-// Reset fungsi untuk setiap konverter
+// Fungsi reset untuk konverter panjang
 function resetLengthConverter() {
   document.getElementById('length-value').value = '';
   document.getElementById('length-from').selectedIndex = 0;
@@ -331,6 +351,7 @@ function resetLengthConverter() {
   document.getElementById('length-result').textContent = '';
 }
 
+// Fungsi reset untuk konverter berat
 function resetWeightConverter() {
   document.getElementById('weight-value').value = '';
   document.getElementById('weight-from').selectedIndex = 0;
@@ -338,6 +359,7 @@ function resetWeightConverter() {
   document.getElementById('weight-result').textContent = '';
 }
 
+// Fungsi reset untuk konverter suhu
 function resetTempConverter() {
   document.getElementById('temp-value').value = '';
   document.getElementById('temp-from').selectedIndex = 0;
