@@ -22,6 +22,12 @@ if (isset($_POST)) {
         header("Location: ../register.php");
         exit;
     }
+    // cek username harus berawalan huruf
+    if (!preg_match('/^[a-zA-Z]/', $username)) {
+        setFlash('auth', 'Username harus diawali dengan huruf!', 'error');
+        header("Location: ../register.php");
+        exit;
+    }
     // Cek apakah password dan konfirmasi password sama
     if ($password !== $konfirmasi) {
         setFlash('auth', 'Password dan Konfirmasi Password tidak sama!', 'error');
@@ -39,6 +45,7 @@ if (isset($_POST)) {
     // Hash password
     $password = password_hash($password, PASSWORD_DEFAULT);
 
+    // Insert data ke database
     $result = dbquery("INSERT INTO users (username, fullname, email, city, password_hash, profile_pic) VALUES ('$username', '$fullname', '$email', '$city', '$password', '')");
     if ($result) {
         setFlash('auth', 'Berhasil Daftar Akun, Silahkan Login!', 'success');

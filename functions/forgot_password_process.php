@@ -15,12 +15,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
+    // Validasi format email dan kecocokan password
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         setFlash('forgot', 'Format email tidak valid.', 'error');
         header('Location: ../forgot_password.php');
         exit();
     }
 
+    // Validasi kecocokan password dan konfirmasi
     if ($password !== $confirm) {
         setFlash('forgot', 'Konfirmasi password tidak cocok.', 'error');
         header('Location: ../forgot_password.php');
@@ -33,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sql = "SELECT id FROM users WHERE username='$usernameEsc' AND email='$emailEsc' LIMIT 1";
     $result = dbquery($sql);
 
+    // Cek apakah query berhasil
     if (mysqli_num_rows($result) === 0) {
         setFlash('forgot', 'Username atau email tidak ditemukan.', 'error');
         header('Location: ../forgot_password.php');
@@ -44,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $userId = $user['id'];
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
+    // Update password hash in the database
     $updateSql = "UPDATE users SET password_hash='$hashedPassword' WHERE id='$userId'";
     if (dbquery($updateSql)) {
         setFlash('forgot', 'Password berhasil diubah. Silakan login dengan password baru.', 'success');
