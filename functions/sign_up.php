@@ -1,6 +1,13 @@
 <?php
 require_once 'functions.php';
 
+// jika user sudah login, redirect ke halaman index
+if (isset($_SESSION['login']) && $_SESSION['login'] === true) {
+    setFlash('auth', 'Anda sudah login, tidak perlu mendaftar lagi.', 'error');
+    header("Location: ../index.php");
+    exit;
+}
+
 if (isset($_POST)) {
     $username = htmlspecialchars($_POST['username'] ?? '', ENT_QUOTES, 'UTF-8');
     $password = htmlspecialchars($_POST['password'] ?? '', ENT_QUOTES, 'UTF-8');

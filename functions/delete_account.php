@@ -8,6 +8,13 @@ if (!isset($_SESSION['login']) || !$_SESSION['login']) {
     exit;
 }
 
+// jika ada session, pastikan user tidak boleh mengakses halaman ini
+if (isset($_SESSION['login']) && $_SESSION['login'] === true) {
+    setFlash('auth', 'Tidak bisa menghapus akun tanpa melewati konfirmasi.', 'error');
+    header('Location: ../index.php');
+    exit;
+}
+
 // Cek jika request method adalah POST dan user_id tersedia
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'])) {
     $user_id = intval($_POST['user_id']);
